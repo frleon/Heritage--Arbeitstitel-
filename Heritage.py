@@ -405,15 +405,19 @@ class City(object):
 						self.cap.addToRealm(self)
 						self.district = self.cap.getDistrict()
 						self.people = []
-						self.ruler = []
+						self.ruler = None
 						break
-	
+
+
 	def appointRuler(self, person):
 		self.ruler = person
+		person.setRule(self)
 	
+
 	def getRuler(self):
 		return self.ruler
 	
+
 	def addToLands(self, pointOrList):
 		if type(pointOrList) == type(()):
 			self.lands.append(pointOrList)
@@ -421,14 +425,20 @@ class City(object):
 			self.lands += pointOrList
 		self.district.addToArea(pointOrList)
 	
+	
 	def eucDist(self, point):
 		return (self.pos[0] - point[0]) ** 2 + (self.pos[1] - point[1]) ** 2
 	
+	
 	def __eq__(self, other):
+		if other == None:
+			return False
 		return self.pos == other.pos
+	
 	
 	def getCap(self):
 		return self.cap
+	
 	
 	def yieldCap(self, dist, xsz = 1024, ysz = 1024):
 		qa = self.pos[0] - dist
@@ -445,15 +455,18 @@ class City(object):
 			return min(re)[1]
 		else:
 			return None
-		
+	
+	
 	def getDistrict(self):
 		return self.district
-	
+
+
 	def getPos(self):
 		return self.pos
-	
+
+
 	def __str__(self):
-		return self.name
+		return str(self.name)
 		
 
 
@@ -769,7 +782,11 @@ class Person():
 	
 	def __str__(self):
 		if self.death == None:
-			return '%s - %s %s (*%s). Z.z. in %s' % (self.num, self.given, self.name, self.birth / 48, self.place.getName())
+			if not self.rule == None:
+				return '%s - %s %s von %s (*%s)' % (self.num, self.given, self.name, self.rule, self.birth / 48)
+			return '%s - %s %s (*%s)' % (self.num, self.given, self.name, self.birth / 48)
+		if not self.rule == None:
+			return '%s - %s %s von %s (%s - %s)' % (self.num, self.given, self.name, self.rule, self.birth / 48, self.death / 48)
 		return '%s - %s %s (%s - %s)' % (self.num, self.given, self.name, self.birth / 48, self.death / 48)
 	
 	
@@ -813,23 +830,26 @@ class Person():
 		return self.rule
 	
 	
-	def rule(self, city):
-		self.rule = rule
+	def setRule(self, city):
+		self.rule = city
 	
 	
-	def getSubRule(self):
-		if self.rule == None:
-			return []
-		re = [self.rule]
+	def getSubRule(self, n = 0):
+		re = [(n, self)]
 		for i in self.bannermen:
-			re.append(i.getSubRule())
+			re += i.getSubRule(n + 1)
 		return re
 	
 	
 	def strRule(self):
-		re = "Graf %s %s von %s\n" % (self.given, self.name, self.rule)
+		re = "Graf %s %s von %s\n" % (self.given, self.name, str(self.rule))
 		for i in self.getSubRule():
-			re += "\n%s" (i)
+			re += "\t" * i[0]
+			p = i[1]
+			re += str(p)
+			if not p.getRule() == None:
+				re += ",   " + str(p.getRule())
+			re += "\n"
 		return re
 		
 	

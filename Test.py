@@ -318,15 +318,19 @@ class City(object):
 						self.cap.addToRealm(self)
 						self.district = self.cap.getDistrict()
 						self.people = []
-						self.ruler = []
+						self.ruler = None
 						break
-	
+
+
 	def appointRuler(self, person):
 		self.ruler = person
+		person.setRule(self)
 	
+
 	def getRuler(self):
 		return self.ruler
 	
+
 	def addToLands(self, pointOrList):
 		if type(pointOrList) == type(()):
 			self.lands.append(pointOrList)
@@ -334,14 +338,20 @@ class City(object):
 			self.lands += pointOrList
 		self.district.addToArea(pointOrList)
 	
+	
 	def eucDist(self, point):
 		return (self.pos[0] - point[0]) ** 2 + (self.pos[1] - point[1]) ** 2
 	
+	
 	def __eq__(self, other):
+		if other == None:
+			return False
 		return self.pos == other.pos
+	
 	
 	def getCap(self):
 		return self.cap
+	
 	
 	def yieldCap(self, dist, xsz = 1024, ysz = 1024):
 		qa = self.pos[0] - dist
@@ -358,13 +368,16 @@ class City(object):
 			return min(re)[1]
 		else:
 			return None
-		
+	
+	
 	def getDistrict(self):
 		return self.district
-	
+
+
 	def getPos(self):
 		return self.pos
-	
+
+
 	def __str__(self):
 		return str(self.name)
 		
@@ -516,7 +529,7 @@ class Person():
 	
 	def __str__(self):
 		if self.death == None:
-			return '%s - %s %s (*%s). Z.z. in %s' % (self.num, self.given, self.name, self.birth / 48, self.place)
+			return '%s - %s %s (*%s)' % (self.num, self.given, self.name, self.birth / 48)
 		return '%s - %s %s (%s - %s)' % (self.num, self.given, self.name, self.birth / 48, self.death / 48)
 	
 	
@@ -560,26 +573,26 @@ class Person():
 		return self.rule
 	
 	
-	def rule(self, city):
-		self.rule = rule
+	def setRule(self, city):
+		self.rule = city
 	
 	
-	def getSubRule(self):
-		if self.rule == None:
-			return []
-		re = [self.rule]
+	def getSubRule(self, n = 0):
+		re = [(n, self)]
 		for i in self.bannermen:
-			re += i.getSubRule()
+			re += i.getSubRule(n + 1)
 		return re
 	
 	
 	def strRule(self):
-		print self.given
-		print self.name
-		print self.rule
 		re = "Graf %s %s von %s\n" % (self.given, self.name, str(self.rule))
 		for i in self.getSubRule():
-			re += "\n%s" (i)
+			re += "\t" * i[0]
+			p = i[1]
+			re += str(p)
+			if not p.getRule() == None:
+				re += ",   " + str(p.getRule())
+			re += "\n"
 		return re
 		
 	
@@ -734,11 +747,9 @@ class Person():
 
 NOW = 0
 
-for i in range(144):
-	print genCityName()
 
 for i in range(12):
-	print i, City.cits[i]
+	print i, Capital.caps[i]
 
 for i in Capital.caps:
 	progress(Capital.caps.index(i), len(Capital.caps))
@@ -750,11 +761,13 @@ for i in City.cits:
 	progress(City.cits.index(i), len(City.cits))
 	if i in Capital.caps:
 		continue
-	i.appointRuler(Person(NOW - randint(16, 60) * 48, None, None, i, sex = 0))
+	p = Person(NOW - randint(16, 60) * 48, None, None, i, sex = 0)
+	i.appointRuler(p)
+	i.getCap().getRuler().pledge(p)
 	for j in range(randint(2, 12)):
 		i.getRuler().pledge(Person(NOW - randint(16, 60) * 48, None, None, i, sex = 0))
 
 YOU = City.cits[1].getRuler()
-print Capital.caps[1]
-print Capital.caps[1].getRuler()
+print str(Capital.caps[1]) + "\n\n"
+print str(Capital.caps[1].getRuler()) + "\n\n"
 print Capital.caps[1].getRuler().strRule()

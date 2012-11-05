@@ -78,7 +78,7 @@ def genCityName():
 		re += outOf(["St. ", "Bad "])
 	re += outOf(cities0)
 	while True:
-		if randint(0, 1) > 0:
+		if randint(0, 1) < 1 or len(re) > 16:
 			break
 		re += outOf(cities1)
 	if randint(0, 9) > 0:
@@ -410,6 +410,7 @@ class City(object):
 	
 	def appointRuler(self, person):
 		self.ruler = person
+		person.rule(self)
 	
 	def getRuler(self):
 		return self.ruler
@@ -827,7 +828,7 @@ class Person():
 	
 	
 	def strRule(self):
-		re = "Graf %s %s von %s\n" (self.given, self.name, self.rule)
+		re = "Graf %s %s von %s\n" % (self.given, self.name, self.rule)
 		for i in self.getSubRule():
 			re += "\n%s" (i)
 		return re

@@ -78,7 +78,7 @@ def genCityName():
 		re += outOf(["St. ", "Bad "])
 	re += outOf(cities0)
 	while True:
-		if randint(0, 1) > 0:
+		if randint(0, 1) < 1 or len(re) > 16:
 			break
 		re += outOf(cities1)
 	if randint(0, 9) > 0:
@@ -577,7 +577,7 @@ class Person():
 		print self.given
 		print self.name
 		print self.rule
-		re = "Graf %s %s von %s\n" (self.given, self.name, str(self.rule))
+		re = "Graf %s %s von %s\n" % (self.given, self.name, str(self.rule))
 		for i in self.getSubRule():
 			re += "\n%s" (i)
 		return re
@@ -755,5 +755,6 @@ for i in City.cits:
 		i.getRuler().pledge(Person(NOW - randint(16, 60) * 48, None, None, i, sex = 0))
 
 YOU = City.cits[1].getRuler()
+print Capital.caps[1]
 print Capital.caps[1].getRuler()
 print Capital.caps[1].getRuler().strRule()
