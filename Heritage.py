@@ -6,9 +6,35 @@ import Image, ImageDraw, PIL.ImageOps
 import pickle
 from random import *
 from cmath import log
+import os, sys
+os.environ['SDL_VIDEODRIVER'] = 'windib'
 
-QUADRATLOGSIZE = 7
+import pygame
+from pygame.locals import *
 
+FPS = 30 # frames per second, the general speed of the program
+WINDOWWIDTH = 256 # size of window's width in pixels
+WINDOWHEIGHT = 256 # size of windows' height in pixels
+
+
+GREY	 = (100, 100, 100)
+NAVYBLUE = ( 60,  60, 100)
+WHITE	 = (255, 255, 255)
+RED	 = (255,   0,   0)
+GREEN	 = (  0, 255,   0)
+BLUE	 = (  0,   0, 255)
+YELLOW   = (255, 255,   0)
+ORANGE   = (255, 127,   0)
+PURPLE   = (255,   0, 255)
+CYAN	 = (  0, 255, 255)
+BLACK    = (  0,   0,   0)
+DARKBLUE = (  0,   0, 127)
+
+NOTACITY = (- 10000, - 10000)
+
+#Verstädterte Fläche in Anteilen der Wurzel der Landfläche.
+CAPITALS = 0.25
+CITIES = 1
 
 world = Image.open("Quadrat.bmp")						#Fuer Algorithmus 3
 
@@ -40,6 +66,10 @@ def outOf(ls):
 	'Gibt ein zufaelliges Element von <ls> zurueck'
 	
 	return ls[randint(0, len(ls) - 1)]
+
+def addsafe(ls, element):
+	if not element in ls:
+		ls.append(element)
 
 def genGiven(sex):
 	'Vornamen erzeugen'
@@ -91,6 +121,8 @@ def genCityName():
 def progress(now, goal, STEP = 10):
 	if now % (goal / STEP) == 0:
 		print str(round(now * 100.0 / goal, 1)) + "%"
+		return True
+	return False
 
 def clean():
 	for i in range(asz, xsz + 1):
@@ -98,11 +130,11 @@ def clean():
 			n = getNeighbours((i, j))
 			change = True
 			for k in n:
-				if world.getpixel(k) == (255, 255, 255):
+				if world.getpixel(k) == WHITE:
 					change = False
 					break
 			if change:
-				world.putpixel((i, j), (0, 0, 0))
+				world.putpixel((i, j), BLACK)
 
 def getNeighbours(point, r = 1, mx = 1024):
 	n = []
@@ -144,18 +176,18 @@ def processPixel(w, x, y, r):
 		)
 	for i in choice:
 		try:
-			if w.getpixel((i[0], i[1])) == (0, 0, 0):
+			if w.getpixel((i[0], i[1])) == BLACK:
 				black += 1
 			base += 1
 		except IndexError:
 			pass
 
 	if randint(0, base * 2 - 1) <= black * 2:
-		return (0, 0, 0)
+		return BLACK
 	elif r <= 2 and black > base / 2:
-		return (0, 0, 0)
+		return BLACK
 	else:
-		return (255, 255, 255)
+		return WHITE
 
 def processField(f, x, y, r):
 	
@@ -386,6 +418,24 @@ world.save("WorldS.bmp")
 
 XSZ = 1024
 
+class Path():
+	paths = []
+	
+	def __init__(self, city1, city2, length):
+		self.city1 = city1
+		self.city2 = city2
+		self.length = length
+		Path.paths = addsafe(Path.paths, self)
+	
+	def __eq__(self, other):
+		if self.city1 == other.city1:
+			return self.city2 == other.city2
+		elif self.city1 == other.city2:
+			return self.city2 == other.city1
+		else:
+			return False
+	
+
 class City(object):
 	cits = []
 	
@@ -406,6 +456,12 @@ class City(object):
 						self.district = self.cap.getDistrict()
 						self.people = []
 						self.ruler = None
+						distColour = self.district.getColour()
+						randColour = []
+						COLOURSPREAD = 16
+						for i in range(3):
+							randColour.append(min(max(distColour[i] + randint(- COLOURSPREAD, COLOURSPREAD), 0), 255))
+						self.colour = tuple(randColour)
 						break
 
 
@@ -420,10 +476,18 @@ class City(object):
 
 	def addToLands(self, pointOrList):
 		if type(pointOrList) == type(()):
-			self.lands.append(pointOrList)
+			addsafe(self.lands, pointOrList)
 		else:
 			self.lands += pointOrList
 		self.district.addToArea(pointOrList)
+		
+	
+	def getLands(self):
+		return self.lands
+	
+	
+	def getColour(self):
+		return self.colour
 	
 	
 	def eucDist(self, point):
@@ -478,13 +542,23 @@ class Capital(City):
 		super(Capital, self).__init__(pos, True, void)
 		if not void:
 			self.district = District(self, Capital.num)
+			self.colour = self.district.getColour()
 			Capital.num += 1
 			Capital.caps.append(self)
 			self.realm = []
 	
+	def getDistrict(self):
+		return self.district
+	
 	def addToRealm(self, city):
 		self.realm.append(city)
 		self.district.addToRealm(city)
+	
+	def listRealm(self):
+		re = ""
+		for i in self.realm:
+			re += str(i) + "\n"
+		return re
 
 
 def isCity(pos):
@@ -501,7 +575,7 @@ class District():
 		self.cap = cap
 		self.num = num
 		self.area = []
-		self.colour = (randint(0, 63), randint(128, 255), randint(128, 255))
+		self.colour = (randint(128, 255), randint(128, 255), randint(128, 255))
 		self.realm = [cap]
 		District.dists.append(self)
 	
@@ -534,8 +608,10 @@ print lb, "Quadratkilometer"
 print "Processing capitals..."
 
 
+lbsq = int(lb ** (0.5))
+
 while len(Capital.caps) < 3:
-	for i in range(lb / 1000):
+	for i in range(int(lbsq * CAPITALS)):
 		coord = (randint(1, xsz - 2), randint(1, ysz - 2))
 		if coord in black:
 			Capital(coord)
@@ -546,8 +622,8 @@ print lc, "Hauptstaedte\n\nProcessing cities"
 
 
 
-for i in range(lb / 50):
-	progress(i, lb / 50, 18)
+for i in range(int(lbsq * CITIES)):
+	progress(i, int(lbsq * CITIES), 18)
 	coord = (randint(0, xsz - 1), randint(0, ysz - 1))
 	if coord in black:
 		if isCity(coord):
@@ -558,20 +634,81 @@ for i in range(lb / 50):
 				break
 		else:
 			City(coord)
+
+'''print "Generating Roads"
+
+for i in City.cits:'''
+
+
+
+
+def renderCountries(points):
+	global sea
 	
+	land = []
+	for i, m in enumerate(points):
+		progress(i, xsz)
+		for j, n in enumerate(m):
+			if n == sea:
+				world.putpixel((i, j), DARKBLUE)
+			else:
+				land.append((i, j))
+				world.putpixel((i, j), n.getColour())
+	for i in Capital.caps:
+		n = getNeighbours(i.getPos(), 2)
+		for j in n:
+			try:
+				world.putpixel(j, (255, 0, 0))
+			except:
+				continue
+	for i in City.cits:
+		world.putpixel(i.getPos(), (255, 0, 0))
+	return land
+
+
+def renderCities():
+	land = []
+	for i in range(xsz):
+		for j in range(ysz):
+			world.putpixel((i, j), DARKBLUE)
+	for p, i in enumerate(City.cits):
+		progress(p, len(City.cits))
+		lands = i.getLands()
+		colour = i.getColour()
+		for j in lands:
+			world.putpixel(j, colour)
+			land.append(j)
+		world.putpixel(i.getPos(), RED)
+	for i in Capital.caps:
+		n = getNeighbours(i.getPos(), r = 2)
+		for j in n:
+			try:
+				world.putpixel(j, RED)
+			except IndexError:
+				continue
+	return land
+
+
+
+
+
+
 	
 ld = len(City.cits)
 
 print ld, "Staedte\n\nProcessing terrain"
 
-points = list(list(- 1 for i in range(ysz)) for i in range(xsz))
+sea = City(NOTACITY, False, void = True)
+# Eine Dummystadt zu Vergleichszwecken
+
+points = list(list(sea for i in range(ysz)) for i in range(xsz))
 
 cpos = []
 
 for i in City.cits:
 	cpos.append(i.getPos())
 
-CGRID = 8
+CGRID = 2
 
 print ""
 
@@ -584,6 +721,7 @@ for i in range(0, xsz, CGRID):
 			re = []
 			last = False
 			while dist <= xsz:
+				'''Durch x/y wird ein wachsendes Quadrat um den Punkt gelegt'''
 				dist *= 2
 				xa = i - dist
 				xb = i + dist
@@ -592,22 +730,27 @@ for i in range(0, xsz, CGRID):
 				for k in cpos:
 					if xa <= k[0] <= xb:
 						if ya <= k[1] <= yb:
+							'''Wenn sich k im Quadrat befindet:'''
 							c = City.cits[cpos.index(k)]
-							re.append((c.eucDist((i, j)), c))
+							if c.getPos() == NOTACITY:
+								continue
+							else:
+								re.append((c.eucDist((i, j)), c))
 				if re:
 					if last:
 						nc = min(re)[1]
 						break
 					last = True
+			points[i][j] = nc
 			nc.addToLands((i, j))
-			points[i][j] = nc.getDistrict()
 
-print "Still processing terrain..."
+
+print "Processing more terrain..."
 
 for i in black:
-	"""Punkte werden Städten und Ländern zugeordnet"""
+	'''Punkte werden Städten und Ländern zugeordnet'''
 	
-	progress(black.index(i), len(black), 32)
+	progress(black.index(i), len(black), xsz ** 2 / 1500)
 	
 	try:
 		x0 = i[0] - (i[0] % CGRID)
@@ -623,7 +766,10 @@ for i in black:
 				for k in range(y0, y1):
 					if isCity((j, k)):
 						continue
+					if z0.getPos() == NOTACITY:
+						continue
 					points[j][k] = z0
+					z0.addToLands((j, k))
 		else:
 			raise IndexError
 					
@@ -642,47 +788,28 @@ for i in black:
 				if xa <= j[0] <= xb:
 					if ya <= j[1] <= yb:
 						c = City.cits[cpos.index(j)]
+						if c.getPos() == NOTACITY:
+							continue
 						re.append((c.eucDist(i), c))
 			if re:
 				if last:
-					nc = min(re)[1]
+					re.sort()
+					nc = re[0][1]	#Kleinstes Element
+					if nc.getPos() == NOTACITY:
+						nc = re[1][1]	#Zweitkleinstes Element
 					break
 				last = True
 		nc.addToLands(i)
-		points[i[0]][i[1]] = nc.getDistrict()
-
+		points[i[0]][i[1]] = nc
 
 
 print lc, "Laender\n", ld + lc, "Staedte"
 
 print "Rendering..."
 
-def render(points):
-	land = []
-	for i, m in enumerate(points):
-		progress(i, xsz)
-		for j, n in enumerate(m):
-			if n == - 1:
-				world.putpixel((i, j), (0, 0, 127))
-			elif n == 0:					#Für Debugging
-				world.putpixel((i, j), (0, 0, 0))
-			elif n == 1:					#Für Debugging
-				world.putpixel((i, j), (255, 255, 255))
-			else:
-				land.append((i, j))
-				world.putpixel((i, j), n.getColour())
-	for i in Capital.caps:
-		n = getNeighbours(i.getPos(), 2)
-		for j in n:
-			try:
-				world.putpixel(j, (255, 0, 0))
-			except:
-				continue
-	for i in City.cits:
-		world.putpixel(i.getPos(), (255, 0, 0))
-	return land
 
-land = render(points)
+land = renderCities()
+
 
 world.save("WorldSC.bmp")
 
@@ -691,7 +818,6 @@ pickle.dump((City.cits, Capital.caps, District.dists, points, land), f)
 f.close()
 print "Welt gespeichert."
 
-world.show()
 
 #Family
 
@@ -1012,9 +1138,27 @@ for i in Capital.caps:
 for i in City.cits:
 	if i in Capital.caps:
 		continue
-	i.appointRuler(Person(NOW - randint(16, 60) * 48, None, None, i, sex = 0))
+	p = Person(NOW - randint(16, 60) * 48, None, None, i, sex = 0)
+	i.appointRuler(p)
+	i.getCap().getRuler().pledge(p)
 	for j in range(randint(2, 12)):
 		i.getRuler().pledge(Person(NOW - randint(16, 60) * 48, None, None, i, sex = 0))
 
-YOU = City.cits[1].getRuler()
-print YOU.getSubRule()
+YOU = Capital.caps[1].getRuler()
+print YOU.strRule()
+
+
+pygame.init()
+FPSCLOCK = pygame.time.Clock()
+DISPLAYSURF = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT))	#Ein Surface-Objekt!
+mapImg = pygame.image.load("WorldSC.bmp")
+pygame.display.set_caption('Il Principe')
+
+while True:
+	for event in pygame.event.get():
+		if event.type == QUIT:
+			pygame.quit()
+			sys.exit()
+	
+	DISPLAYSURF.blit(mapImg, (0, 0))
+	pygame.display.update()
