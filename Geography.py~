@@ -1,0 +1,477 @@
+# -*- coding: latin-1 -*-
+
+#\x84\x94\x81 = äöü	\x8e\x99\x9a = ÄÖÜ
+
+
+from BaseOps import *
+from Family import *
+
+world = Image.open("Quadrat.bmp")
+	
+XSZ, YSZ = world.size
+
+NOTACITY = (- 10000, - 10000)
+
+#Verstädterte Fläche in Anteilen der Wurzel der Landfläche.
+CAPITALS = 0.25
+CITIES = 1
+
+cities0 = ["Neu", "Bruch", "Borg", "Mos", "Par", "Ober", "Nieder", "Unter", "Nord", "West", "Ost", "Rom", "Sar", "Franken", "Myr", "Win", "Ry", "Alt", "Alten"]
+cities1 = ["en", "in", "horn", "lott", "sang", "sel", "lau", "bil", "der", "er", "schild", "hal", "bel", "ter", "ling"]
+cities2 = ["burg", "dorf", "berg", "stadt", "burg", "dorf", "berg", "stadt", "burg", "dorf", "berg", "stadt", "walde", "ter", "en", "horst", "hausen", "sal", "stedt", "mar", "furt", "furt", "stein", "stein", "stein", "fels", "fels", "bach", "bach"]
+
+
+class Path():
+	paths = []
+	
+	def __init__(self, city1, city2, length):
+		self.city1 = city1
+		self.city2 = city2
+		self.length = length
+		addsafe(Path.paths, self)
+		city1.addPath(self)
+		city2.addPath(self)
+		
+	def __eq__(self, other):
+		if self.city1 == other.city1:
+			return self.city2 == other.city2
+		elif self.city1 == other.city2:
+			return self.city2 == other.city1
+		else:
+			return False
+	
+	def goto(self, city):
+		if self.city1 == city:
+			return self.city2
+		else:
+			return self.city1
+	
+	def getLength(self):
+		return self.length
+	
+
+class City(object):
+	cits = []
+	
+	def __init__(self, pos, isCap = False, void = False):
+		
+		'''Obergrenze ohne Auswirkungen auf die Performance. Karten mit
+		größerer Seitenlänge werden nicht unterstützt.'''
+		XSZ = 1024
+		
+		self.pos = pos
+		self.lands = [pos] # Gebietspunkte
+		self.borders = [] # Grenzpunkte (zur Markierung)
+		self.bordering = [] # Städte, deren Gebiete direkt angrenzen
+		self.paths = [] # Wege von hier
+		#<paths> bezieht sich auf Direktverbindungen, <ways> auf alle anderen
+		self.ways = {self: (0, None)} #ways = {Stadt : (Distanz, Vorgänger)}
+		self.name = genCityName()
+		if not void:
+			City.cits.append(self)
+			if not isCap:
+				for i in range(0, XSZ + 1, XSZ / 32):
+					posCap = self.yieldCap(i)
+					if not type(posCap) == type(None):
+						self.cap = posCap
+						self.cap.addToRealm(self)
+						self.district = self.cap.getDistrict()
+						self.people = []
+						self.ruler = None
+						distColour = self.district.getColour()
+						randColour = []
+						COLOURSPREAD = 16
+						for i in range(3):
+							randColour.append(min(max(distColour[i] + randint(- COLOURSPREAD, COLOURSPREAD), 0), 255))
+						self.colour = tuple(randColour)
+						break
+
+	
+	def getWayTo(self, city):
+		if self.wayToExists(city):
+			re = []
+			time = 0
+			here = city
+			while True:
+				p = self.ways[here]
+				distance, predecessor = p
+				if predecessor == None:
+					break
+				re.append(predecessor)
+				here = predecessor
+				time += distance
+			return (re, time)
+	
+	
+	def forgetAllWays(self):
+		'''Löscht alle bekannten Wegverbindungen, Vorsicht!'''
+		
+		self.ways = {self: (0, None)}
+	
+	
+	def wayToExists(self, city):
+		'''Nach Dijkstra'''
+		
+		try:
+			a = self.ways[city]
+			return True
+		except KeyError:
+			#Praktisch unendlich. Das gibt ein Limit für die Kartengröße vor!
+			INF = 999999
+			
+			c = list((INF, ci, None) for ci in City.cits)
+			for n, i in enumerate(c):
+				reachable = []
+				for p in self.paths:
+					reachable.append(p.goto(self))
+				if i[1] in reachable:
+					if i[1] == city:
+						self.ways[city] = (self.eucDist(city.getPos()), self)
+						return True
+					c[n] = (self.eucDist(i[1].getPos()), i[1], self)
+				elif i[1] == self:
+					c[n] = (0, i[1], None)
+					
+			while c:
+				shortest = min(c)
+				c.remove(shortest)
+				distance, destination, predecessor = shortest
+				if distance == INF:
+					return False
+				self.ways[destination] = (distance, predecessor)
+				if destination == city:
+					return True
+				for n, i in enumerate(c):
+					reachable = []
+					for p in shortest[1].paths:
+						reachable.append(p.goto(self))
+					if i[1] in reachable:
+						c[n] = (shortest[0] + shortest[1].eucDist(i[1].getPos()), i[1], shortest[1])
+			raise ZeroDivisionError # Fehler: Stadt nicht vorhanden!
+
+
+	def appointRuler(self, person):
+		self.ruler = person
+		person.setRule(self)
+	
+
+	def getRuler(self):
+		return self.ruler
+	
+	def addPath(self, path):
+		addsafe(self.paths, path)
+	
+	
+	def getPaths(self):
+		return self.paths
+	
+
+	def addToLands(self, point):
+		addsafe(self.lands, point)
+		self.district.addToLands(point)
+	
+	
+	def yieldBorders(self):
+		for i in self.lands:
+			n = getNeumann(i)
+			for j in n:
+				if not j in self.lands:
+					x, y = j
+					if 0 <= x and x < XSZ:
+						if 0 <= y and y < YSZ:
+							addsafe(self.borders, i)
+					break
+		for i in self.borders:
+			n = getNeumann(i)
+			for j in n:
+				try:
+					for d in City.cits:
+						if d == self:
+							continue
+						if j in d.getLands():
+							addsafe(self.bordering, d)
+				except IndexError:
+					continue
+	
+	
+	def getBordering(self):
+		return self.bordering
+	
+	
+	def getBorders(self):
+		return self.borders
+	
+	
+	def getLands(self):
+		return self.lands
+	
+	
+	def getColour(self):
+		return self.colour
+	
+	
+	def eucDist(self, point):
+		return int(((self.pos[0] - point[0]) ** 2 + (self.pos[1] - point[1]) ** 2) ** 0.5)
+	
+	
+	def __eq__(self, other):
+		if other == None:
+			return False
+		return self.pos == other.pos
+	
+	
+	def getCap(self):
+		return self.cap
+	
+	
+	def yieldCap(self, dist, xsz = 1024, ysz = 1024):
+		qa = self.pos[0] - dist
+		qb = self.pos[0] + dist
+		ra = self.pos[1] - dist
+		rb = self.pos[1] + dist
+		re = []
+		for i in Capital.caps:
+			p = i.getPos()
+			if qa <= p[0] <= qb:
+				if ra <= p[1] <= rb:
+					re.append((self.eucDist(p), i))
+		if re:
+			return min(re)[1]
+		else:
+			return None
+	
+	
+	def getDistrict(self):
+		return self.district
+
+
+	def getPos(self):
+		return self.pos
+
+
+	def __str__(self):
+		return str(self.name)
+		
+
+
+class Capital(City):
+	num = 0
+	caps = []
+	
+	def __init__(self, pos, void = False):
+		super(Capital, self).__init__(pos, True, void)
+		if not void:
+			self.district = District(self, Capital.num)
+			self.colour = self.district.getColour()
+			Capital.num += 1
+			Capital.caps.append(self)
+			self.realm = []
+	
+	def getDistrict(self):
+		return self.district
+	
+	def addToRealm(self, city):
+		self.realm.append(city)
+		self.district.addToRealm(city)
+	
+	def listRealm(self):
+		re = ""
+		for i in self.realm:
+			re += str(i) + "\n"
+		return re
+
+
+def isCity(pos):
+	for i in City.cits:
+		if i.getPos() == pos:
+			return True
+	return False
+
+
+def cityAt(pos):
+	for i in City.cits:
+		if i.getPos() == pos:
+			return i
+	return None
+
+
+
+
+class District():
+	dists = []
+	
+	def __init__(self, cap, num):
+		self.cap = cap
+		self.num = num
+		self.land = []
+		self.borders = []
+		self.bordering = []
+		self.colour = (randint(128, 255), randint(128, 255), randint(128, 255))
+		self.realm = [cap]
+		District.dists.append(self)
+		
+	
+	def getCap(self):
+		return self.cap
+	
+	
+	def addToRealm(self, city):
+		self.realm.append(city)
+	
+	
+	def addToLands(self, pointOrList):
+		if type(pointOrList) == type(()):
+			self.land.append(pointOrList)
+		else:
+			self.land += pointOrList
+	
+	
+	def yieldBorders(self):
+		potentialBorders = []
+		for i in self.realm:
+			potentialBorders += i.getBorders()
+		for i in potentialBorders:
+			n = getNeumann(i)
+			for j in n:
+				if j not in self.land:
+					addsafe(self.borders, i)
+					break
+		for i in self.borders:
+			n = getNeumann(i)
+			for j in n:
+				try:
+					for d in District.dists:
+						if d == self:
+							continue
+						elif j in d.getLands():
+							addsafe(self.bordering, d)
+				except IndexError:
+					continue
+
+
+	def getBordering(self):
+		return self.bordering
+
+
+	def getBorders(self):
+		return self.borders
+
+
+	def getLands(self):
+		return self.land
+
+
+	def getColour(self):
+		return self.colour
+
+
+def genCityName():
+	'Stadtnamen erzeugen'
+	
+	re = ""
+	if randint(0, 9) == 0:
+		re += outOf(["St. ", "Bad "])
+	re += outOf(cities0)
+	while True:
+		if randint(0, 1) < 1 or len(re) > 16:
+			break
+		re += outOf(cities1)
+	if randint(0, 9) > 0:
+		re += outOf(cities2)
+	return re
+
+def generateLandscape(field):
+	black = []
+	xsz = len(field)
+	ysz = len(field[0])
+	
+	for i in range(xsz):
+		for j in range(ysz):
+			if field[i][j] == 0:
+				black.append((i, j))
+	
+	lb = len(black)
+	
+	print lb, "Quadratkilometer"
+	
+	print "Processing capitals..."
+	
+	
+	lbsq = int(lb ** (0.5))
+	
+	while len(Capital.caps) < 3:
+		for i in range(int(lbsq * CAPITALS)):
+			coord = (randint(1, xsz - 2), randint(1, ysz - 2))
+			if coord in black:
+				n = getNeighbours(coord, 10)
+				for j in n:
+					if isCity(j):
+						i -= 1
+						continue
+				Capital(coord)
+	
+	lc = len(Capital.caps)
+	
+	print lc, "Hauptstaedte\n\nProcessing cities"
+	
+	for i in range(int(lbsq * CITIES)):
+		progress(i, int(lbsq * CITIES), 18)
+		coord = (randint(0, xsz - 1), randint(0, ysz - 1))
+		if coord in black:
+			if isCity(coord):
+				continue
+			n = getNeighbours(coord, 4)
+			for j in n:
+				if isCity(j):
+					break
+			else:
+				City(coord)
+	return black
+
+
+def renderCountries(points, xsz, ysz, world):
+	
+	land = []
+	for i in range(xsz):
+		for j in range(ysz):
+			world.putpixel((i, j), DARKBLUE)
+	for p, i in enumerate(District.dists):
+		progress(p, len(District.dists))
+		lands = i.getLands()
+		colour = i.getColour()
+		for j in lands:
+			world.putpixel(j, colour)
+			land.append(j)
+	for i in City.cits:
+		world.putpixel(i.getPos(), RED)
+	for i in Capital.caps:
+		n = getNeighbours(i.getPos(), r = 1)
+		for j in n:
+			try:
+				world.putpixel(j, RED)
+			except IndexError:
+				continue
+	return land
+
+	
+def renderCities(xsz, ysz, world):
+	land = []
+	for i in range(xsz):
+		for j in range(ysz):
+			world.putpixel((i, j), DARKBLUE)
+	for p, i in enumerate(City.cits):
+		progress(p, len(City.cits))
+		lands = i.getLands()
+		colour = i.getColour()
+		for j in lands:
+			world.putpixel(j, colour)
+			land.append(j)
+		world.putpixel(i.getPos(), RED)
+	for i in Capital.caps:
+		n = getNeighbours(i.getPos(), r = 1)
+		for j in n:
+			try:
+				world.putpixel(j, RED)
+			except IndexError:
+				continue
+	return land

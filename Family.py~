@@ -1,0 +1,348 @@
+# -*- coding: latin-1 -*-
+
+#\x84\x94\x81 = äöü	\x8e\x99\x9a = ÄÖÜ
+
+
+from BaseOps import *
+
+male0 = ["Jo", "Lu", "Hein", "Pe", "Theo", "An", "Bern", "Her", "Wil", "Cas", "Ger", "Hen", "Fried", "Ge", "Her", "Chris", "Cle", "Kle", "Mar", "Mi", "Phil", "Tho", "Wal", "Wer", "Bal", "Diet", "Fer", "Gus", "Kas", "Mat", "Ot", "Au" "Fe", "Gun", "Hel", "Hu", "Kon", "Lud", "Mo", "Nor", "Ro", "Ru", "Se", "Vol", "Wil", "Al", "An", "Ben", "Ber", "Bru", "Bur", "Cas", "Da", "El", "Eng", "Er", "Gis", "Gott", "Gre", "Han", "Ha", "Ig", "Ja", "Leo", "Le", "Lo", "Lud", "Mag", "Man", "Ma", "Mar", "Mar", "Na", "Nik", "Rein", "Rich", "Ro", "Sieg", "Till", "Tim", "Wolf", "Dom"]
+male1 = ["hann", "kas", "rich", "sef", "ter", "dor", "o", "ton", "hard", "mann", "helm", "par", "dolf", "hard", "rich", "han", "nes", "org", "bert", "toph", "mens", "tin", "cha", "el", "ber", "hard", "fried", "ther", "mut", "seph", "mas", "ter", "ner", "fons", "fred", "dre", "as", "tha", "sar", "di", "nand", "tav", "bert", "an", "nes", "par", "thi", "as", "to", "o", "gust", "hold", "lix", "tus", "rad", "wig", "ritz", "bas", "ti", "an", "fan", "ker", "fried", "li", "ton", "loys", "i", "us", "dre", "to", "nius", "no", "nard", "dus", "tolt", "no", "an", "ni", "el", "der", "du", "ard", "gon", "mar", "mil", "el", "rik", "win", "ver", "ard", "ver", "har", "dus", "ard", "rit", "lieb", "gor", "do", "rald", "gen", "man", "nus", "natz", "kob", "nik", "a", "chim", "do", "kus", "se", "fus", "on", "renz", "ger", "nus", "nu", "el", "co", "kus", "xi", "mi", "li", "an", "po", "le", "on", "las", "hold", "bin", "ma", "nus", "do", "rus", "we", "gang"]
+female0 = ["Ma", "An", "Ca", "Mar", "Jo", "Ag", "Em", "Hil", "Fran", "Ka", "The", "Wil", "Mar", "Irm", "So", "Chris", "Cla", "Ri", "Bar", "Ju", "Ro", "Ur", "Ber", "Frie", "Hed", "Kla", "Li", "Pau", "Pe", "Si", "As", "Cle", "El", "Ga", "Gre", "Gret", "Hen", "Il", "Kor", "Lu", "Mar", "Ma", "Ot", "San", "Sieg", "Sig", "Ste", "Su", "The", "Wil", "Han", "Mi", "Ja", "Min", "Al", "Ang", "An", "Au", "Be", "Bern", "Bir", "Bri", "Ca", "Clau", "Dag", "Da", "De", "Di", "El", "Er", "Fer", "Flo", "Gi", "Gu", "Gun", "Han", "Hed", "He", "Hel", "Her", "Hil", "Ing", "Ir", "Jen", "Jes", "Ka", "Kris", "La", "Lie", "Li", "Lo", "Lu", "Mag", "Mar", "Mecht", "Min", "Mi", "Mo", "Ni", "Pe", "Pi", "Rein", "Re", "Ro", "Sa", "Sy", "Tes", "The", "To", "Ve", "Vi", "An", "Ran"]
+female1 = ["ri", "a", "na", "li", "sa", "beth", "tha", "ri", "na", "trud", "ga", "re", "the", "han", "na", "nes", "ma", "de", "gard", "zis", "ka", "da", "re", "si", "a", "hel", "mi", "ga", "re", "tha", "gard", "phi", "ti", "na", "ra", "ta", "ba", "ra", "tel", "ti", "ne", "mi", "li", "a", "su", "la", "ta", "va", "de", "ri", "ke", "se", "la", "wig", "ra", "sa", "tra", "bil", "la", "loi", "si", "a", "trid", "nar", "di", "ne", "men", "ke", "ri", "e", "le", "ta", "ri", "et", "ta", "se", "se", "fa", "du", "cia", "da", "le", "na", "got", "rie", "thil", "de", "tild", "ti", "li", "dra", "lin", "de", "grid", "fa", "nie", "san", "re", "hel", "mi", "ny", "ma", "na", "ga", "tha", "loy", "drea", "ge", "mie", "gus", "ro", "mar", "ana", "del", "traud", "nore", "nan", "ren", "tru", "trud", "drun", "del", "ga", "tha", "lo", "na", "grid", "ris", "ma", "sol", "fer", "tin", "ris", "pol", "sel", "beth", "hild", "am", "gi", "hil", "na", "te", "bi", "phie", "bil", "sa", "o", "do", "ra", "ni", "te", "ro", "ni", "ka", "vi", "en", "ne"]
+
+surnames0 = ["Mar", "Ju", "Mer", "Sa", "Ve", "Val", "Bar", "Es", "Tul", "Ar", "Mal", "Tar", "Mor", "Bel", "Flor", "Lan", "Har", "Star", "Car", "Al", "Mul"]
+surnames1 = ["ra", "the", "on", "ter", "mont", "ly", "ryn", "mor", "rent", "ron", "nis", "te", "mi", "si", "us", "ri", "son", "fa"]
+
+
+def genGiven(sex):
+	'Vornamen erzeugen'
+	
+	if sex == 0:
+		re = outOf(male0)
+		while True:
+			re += outOf(male1)
+			if randint(0, 11) > 0:
+				break
+	elif sex == 1:
+		re = outOf(female0)
+		while True:
+			re += outOf(female1)
+			if randint(0, 5) > 0:
+				break
+	else:
+		0/0
+	return re
+
+
+def genSurname():
+	'Nachnamen erzeugen'
+	
+	re = outOf(surnames0)
+	while True:
+		re += outOf(surnames1)
+		if randint(0, 5) > 0:
+			break
+	return re
+
+
+people = []
+living = []
+msingles = []
+fsingles = []
+
+
+class Person():
+	global living
+	global people
+	global msingles
+	global fsingles
+	
+	population = 0
+	DAYSPERYEAR = 365
+	
+	
+	def __init__(self, birth, father, mother, place, sex = - 1, given = None):
+		self.num = Person.population
+		self.place = place
+		Person.population += 1
+		self.birth = birth
+		self.father = father
+		self.mother = mother
+		if sex == - 1:
+			self.sex = randint(0, 1)
+		else:
+			self.sex = sex
+			
+		if given == None:
+			self.given = genGiven(self.sex)
+		else:
+			self.given = given
+		
+		tradition = self.getFamilyNames()
+		if len(tradition) > 0 and randint(0, 1) > 0:
+			self.given = outOf(tradition)
+		
+		self.bannermen = []
+		self.death = None
+		self.married = False
+		self.currentlyMarried = False
+		self.weddings = []
+		self.spouses = []
+		self.children = []
+		self.rule = None
+		if self.father == None:
+			self.name = genSurname()
+		else:
+			self.name = self.father.getSurname()
+		
+		if self.sex == 0:
+			msingles.append(self)
+		else:
+			fsingles.append(self)
+		living.append(self)
+		people.append(self)
+	
+	
+	def data(self):
+		'Gibt das Datenblatt einer Person zurueck'
+		
+		re = """
+		%s (%s)
+		%s - %s
+		Vater: %s
+		Mutter: %s
+		""" % (self, "mw"[self.sex], self.birth / Person.DAYSPERYEAR, self.death / Person.DAYSPERYEAR, self.father, self.mother)
+		
+		if self.married:
+			re += "Partner:\n"
+			for i in range(len(self.spouses)):
+				re += "                " + str(self.weddings[i] / Person.DAYSPERYEAR) + "   " + str(self.spouses[i]) + "\n"
+			
+			re += "                Kinder:\n"
+			for i in self.children:
+				re += "                " + str(i.birth / Person.DAYSPERYEAR) + "   " + str(i) + "\n"
+		
+		if self.bannermen:
+			re += "\n\nGefolgsleute:"
+		for i in self.bannermen:
+			re += "  - " + i
+		return re
+	
+	
+	def __str__(self):
+		if self.death == None:
+			if not self.rule == None:
+				return '%s - %s %s von %s (*%s)' % (self.num, self.given, self.name, self.rule, self.birth / Person.DAYSPERYEAR)
+			return '%s - %s %s (*%s)' % (self.num, self.given, self.name, self.birth / Person.DAYSPERYEAR)
+		if not self.rule == None:
+			return '%s - %s %s von %s (%s - %s)' % (self.num, self.given, self.name, self.rule, self.birth / Person.DAYSPERYEAR, self.death / Person.DAYSPERYEAR)
+		return '%s - %s %s (%s - %s)' % (self.num, self.given, self.name, self.birth / Person.DAYSPERYEAR, self.death / Person.DAYSPERYEAR)
+	
+	
+	def getAge(self, day):
+		return (day - self.birth) / Person.DAYSPERYEAR
+		
+	
+	def getBirth(self):
+		return self.birth / Person.DAYSPERYEAR
+	
+	
+	def getSex(self):
+		return self.sex
+
+
+	def getGiven(self):
+		return self.given
+	
+	
+	def getFamilyNames(self):
+		ego = self
+		try:
+			if self.sex == 0:
+				names = [self.mother.father.getGiven()]
+			else:
+				names = [self.father.mother.getGiven()]
+		except:
+			names = []
+		while True:
+			try:
+				if self.sex == 0:
+					ego = ego.father
+				else:
+					ego = ego.mother
+				names.append(ego.getGiven())
+			except:
+				return names
+	
+	
+	def getRule(self):
+		return self.rule
+	
+	
+	def setRule(self, city):
+		self.rule = city
+	
+	
+	def getSubRule(self, n = 0):
+		re = [(n, self)]
+		for i in self.bannermen:
+			re += i.getSubRule(n + 1)
+		return re
+	
+	
+	def strRule(self):
+		re = "Graf %s %s von %s\n" % (self.given, self.name, str(self.rule))
+		for i in self.getSubRule():
+			re += "\t" * i[0]
+			p = i[1]
+			re += str(p)
+			if not p.getRule() == None:
+				re += ",   " + str(p.getRule())
+			re += "\n"
+		return re
+		
+	
+	def getSurname(self):
+		'Gibt den Nachnamen einer Person zurueck'
+		
+		return self.name
+	
+	
+	def isMarried(self):
+		return self.currentlyMarried
+	
+	
+	def marry(self, spouse, day):
+		self.spouses.append(spouse)
+		self.weddings.append(day)
+		self.married = True
+		self.currentlyMarried = True
+		try:
+			msingles.remove(self)
+		except ValueError:
+			fsingles.remove(self)
+	
+	
+	def getSpouse(self):
+		return self.spouses[- 1]
+	
+	
+	def careless(self, child):
+		self.children.append(child)
+	
+	
+	def getChildren(self):
+		return len(self.children)
+	
+	
+	def getFirstGradeRelatives(self):
+		'Gibt die Eltern und Kinder einer Person zurueck'
+		
+		re = []
+		if not self.father == None:
+			re.append(self.father)
+		if not self.mother == None:
+			re.append(self.mother)
+		for i in self.children:
+			re.append(i)
+		return re
+	
+	
+	def detGrade(self, person):
+		grade = 0
+		relatives = [self]
+		while grade < 4:
+			next = []
+			grade += 1
+			for i in relatives:
+				try:
+					next += i.getFirstGradeRelatives()
+				except:
+					continue
+			for i in next:
+				if i not in relatives:
+					relatives.append(i)
+			if person in relatives:
+				return grade
+		return 4
+			
+
+	def die(self, day):
+		self.death = day
+		if self.currentlyMarried:
+			self.getSpouse().currentlyMarried = False
+			if self.sex == 0:
+				fsingles.append(self.getSpouse())
+			else:
+				msingles.append(self.getSpouse())
+		else:
+			try:
+				msingles.remove(self)
+			except ValueError:
+				fsingles.remove(self)
+		'''if self in kings:
+			#print "King dead"
+			try:
+				#print "Searching for successor"
+				kings.append(self.getSuccessor(self.death))
+			except AttributeError:
+				kings.append(self.getSuccessor(self.death, False))'''
+		living.remove(self)
+	
+	
+	def getDeath(self):
+		return self.death / Person.DAYSPERYEAR
+	
+	
+	def getSuccessor(self, day, salic = True):
+		'Gibt den Nachfolger eines Regenten an.'
+		
+		if self.death == None:
+			return self.death
+		
+		rels = self.getFirstGradeRelatives()
+		
+		for c in range(5):
+			livingNow = []
+			
+			for i in rels:
+				if i == None:
+					continue
+				if (day - i.birth) / Person.DAYSPERYEAR > 16 + randint(- 2, 2) and (day < i.death or i.death == None):
+					livingNow.append((i.birth, i))
+			livingNow.sort()
+			for i in livingNow:
+				#print salic, i[1].sex == 1, (salic and i[1].sex == 1)
+				if not(salic and i[1].sex == 1):
+					return i[1]
+			next = []
+			for i in rels:
+				next += i.getFirstGradeRelatives()
+			for i in next:
+				if i not in rels:
+					rels.append(i)
+		return None
+	
+	
+	def printDescendants(self, indent, generations = 100):
+		if generations >= 0:
+			print "|\t" * indent, "|------", self
+			for i in self.children:
+				i.printDescendants(indent + 1, generations - 1)
+			for i in self.spouses:
+				print "|\t" * (indent + 1), "  oo", i
+	
+	
+	def printAncestors(self, indent, both = True, generations = 100):
+		if generations >= 0:
+			if not both:
+				indent = 0
+			if not self.father == None:
+				self.father.printAncestors(indent + 1, both, generations - 1)
+			print "\t" * indent, self
+			if not self.mother == None and both:
+				self.mother.printAncestors(indent + 1, both, generations - 1)
+	
+	def pledge(self, bannermanToBe):
+		if bannermanToBe.getSex() == 0:
+			self.bannermen.append(bannermanToBe)
